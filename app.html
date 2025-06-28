@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hombre vs Zombis</title>
+    <!-- Incluye Tailwind CSS para un estilo rápido y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos básicos para el cuerpo y el contenedor del juego */
+        body {
+            font-family: 'Inter', sans-serif; /* Fuente Inter para una apariencia moderna */
+            background-color: #1a202c; /* Fondo oscuro */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Ocupa el 100% del alto de la ventana */
+            width: 100vw; /* Ocupa el 100% del ancho de la ventana */
+            margin: 0;
+            overflow: hidden; /* Evita barras de desplazamiento */
+            color: #e2e8f0; /* Color de texto claro */
+        }
+
+        /* Contenedor principal del juego */
+        #game-container {
+            position: relative; /* Para posicionar elementos internos */
+            width: 98vw; /* Ocupa el 98% del ancho del viewport */
+            height: 90vh; /* Ocupa el 90% del alto del viewport (deja espacio para el score) */
+            /* Se eliminan max-width y max-height para permitir que sea más grande */
+            background-color: #2f855a; /* Color de pasto oscuro para el área de juego */
+            border-radius: 1rem; /* Esquinas redondeadas */
+            overflow: hidden; /* Asegura que los personajes no salgan del borde */
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5); /* Sombra para profundidad */
+            border: 4px solid #4a5568; /* Borde sutil */
+        }
+
+        /* Estilo del jugador (el hombre) - ahora una imagen */
+        #player {
+            position: absolute;
+            width: 50px; /* Tamaño un poco más grande para la imagen */
+            height: 50px;
+            object-fit: contain; /* Ajusta la imagen sin recortarla */
+            image-rendering: pixelated; /* Si usas pixel art, esto ayuda a que no se vea borroso */
+            z-index: 10; /* Asegura que esté por encima de los zombis */
+        }
+
+        /* Estilo de los zombis - ahora imágenes */
+        .zombie {
+            position: absolute;
+            width: 60px; /* Tamaño un poco más grande para la imagen del zombi */
+            height: 60px;
+            object-fit: contain; /* Ajusta la imagen sin recortarla */
+            image-rendering: pixelated; /* Si usas pixel art, esto ayuda a que no se vea borroso */
+            z-index: 5; /* Por debajo del jugador */
+        }
+
+        /* Mensaje de Game Over */
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8); /* Fondo semitransparente oscuro */
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem; /* Tamaño de fuente grande */
+            text-align: center;
+            border-radius: 1rem; /* Coincide con el contenedor del juego */
+            z-index: 20; /* Asegura que esté por encima de todo */
+            padding: 1rem;
+            box-sizing: border-box; /* Incluye padding en el ancho/alto */
+        }
+
+        #game-over-screen h2 {
+            margin-bottom: 1rem;
+            font-size: 3.5rem;
+            color: #fc8181; /* Rojo suave para Game Over */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7); /* Sombra de texto */
+        }
+
+        #game-over-screen p {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Botón de reiniciar */
+        .game-button {
+            padding: 0.8rem 2rem;
+            font-size: 1.2rem;
+            background-color: #63b3ed; /* Azul suave */
+            color: white;
+            border: none;
+            border-radius: 0.5rem; /* Esquinas redondeadas */
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease; /* Transiciones suaves */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); /* Sombra para efecto 3D */
+            outline: none; /* Elimina el contorno al hacer clic */
+        }
+
+        .game-button:hover {
+            background-color: #4299e1; /* Azul más oscuro al pasar el ratón */
+            transform: translateY(-2px); /* Pequeño levantamiento */
+        }
+
+        .game-button:active {
+            background-color: #2b6cb0; /* Azul más oscuro al hacer clic */
+            transform: translateY(0); /* Vuelve a la posición original */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Sombra más pequeña */
+        }
+
+        /* Marcador de puntuación */
+        #score-display {
+            margin-top: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fed7aa; /* Color dorado para la puntuación */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            padding-bottom: 1rem; /* Pequeño padding para que no esté pegado al borde */
+        }
+
+        /* Estilo del botón de inicio */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            text-align: center;
+            border-radius: 1rem;
+            z-index: 30; /* Más alto que Game Over */
+        }
+
+        #start-screen h2 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            color: #9f7aea; /* Púrpura suave para el título de inicio */
+        }
+
+        #start-screen p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            max-width: 70%;
+            line-height: 1.5;
+        }
+
+        /* Instrucciones para móviles (botones táctiles) */
+        .mobile-controls {
+            display: none; /* Ocultar por defecto */
+            position: absolute;
+            bottom: 1rem;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            z-index: 100; /* Asegura que estén encima de todo */
+        }
+
+        .mobile-controls button {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            font-size: 1.5rem;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        .mobile-controls button:active {
+            opacity: 1;
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Mostrar controles móviles en pantallas pequeñas */
+        @media (max-width: 768px) {
+            .mobile-controls {
+                display: flex; /* Mostrar controles móviles */
+            }
+            #game-container {
+                width: 98vw; /* Asegura que sea casi pantalla completa en móviles también */
+                height: 80vh; /* Deja más espacio para los controles en móvil */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- El jugador (hombre) ahora es una imagen -->
+        <img id="player" src="A.webp" alt="Jugador Phineas">
+
+        <!-- Pantalla de inicio -->
+        <div id="start-screen">
+            <h2>Hombre vs Zombis</h2>
+            <p>Escapa de los zombis y sobrevive el mayor tiempo posible. Usa las flechas del teclado o los botones en pantalla para moverte.</p>
+            <button id="start-button" class="game-button">¡Empezar!</button>
+        </div>
+
+        <!-- Pantalla de Game Over -->
+        <div id="game-over-screen" style="display: none;">
+            <h2>¡Game Over!</h2>
+            <p>Tiempo de Supervivencia: <span id="final-score">0</span> segundos</p>
+            <button id="restart-button" class="game-button">Volver a Intentarlo</button>
+        </div>
+    </div>
+
+    <div id="score-display">Puntuación: 0</div>
+
+    <!-- Controles táctiles para móviles -->
+    <div class="mobile-controls">
+        <button id="mobile-up">&#9650;</button> <!-- Flecha arriba -->
+        <button id="mobile-left">&#9664;</button> <!-- Flecha izquierda -->
+        <button id="mobile-right">&#9654;</button> <!-- Flecha derecha -->
+        <button id="mobile-down">&#9660;</button> <!-- Flecha abajo -->
+    </div>
+
+
+    <script>
+        // Variables globales del juego
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score-display');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+
+        const playerSpeed = 5; // Velocidad de movimiento del jugador
+        const zombieSpeed = 1; // Velocidad de movimiento de los zombis (más lento que el jugador)
+        let playerX, playerY; // Posición actual del jugador
+        let zombies = []; // Array para almacenar los zombis
+        let score = 0; // Puntuación (tiempo de supervivencia)
+        let gameInterval; // Intervalo para el bucle principal del juego
+        let zombieSpawnInterval; // Intervalo para la aparición de zombis
+        let isGameOver = false; // Estado del juego
+        let isGamePaused = true; // El juego comienza pausado en la pantalla de inicio
+
+        // Dimensiones del contenedor del juego (se actualizan en cada frame para responsividad)
+        let gameWidth, gameHeight;
+
+        // Variables para el control de movimiento del jugador por teclado/táctil
+        const keysPressed = {}; // Almacena las teclas que están siendo presionadas
+        const mobileButtonsPressed = {
+            'up': false,
+            'down': false,
+            'left': false,
+            'right': false
+        };
+
+        // URLs de las imágenes de los personajes
+        const playerImageUrl = "A.webp"; // La imagen de Phineas (ahora WEBP)
+        const zombieImageUrl = "Z.webp"; // La imagen del Zombi
+
+        // --- Funciones del juego ---
+
+        /**
+         * Inicializa las variables y el estado del juego para un nuevo comienzo.
+         */
+        function initializeGame() {
+            // Obtener las dimensiones del contenedor del juego
+            gameWidth = gameContainer.offsetWidth;
+            gameHeight = gameContainer.offsetHeight;
+
+            // Establecer la imagen del jugador
+            player.src = playerImageUrl;
+            player.alt = "Jugador Phineas";
+
+            // Posicionar al jugador en el centro
+            playerX = gameWidth / 2 - player.offsetWidth / 2;
+            playerY = gameHeight / 2 - player.offsetHeight / 2;
+            updatePlayerPosition();
+
+            // Limpiar zombis existentes
+            zombies.forEach(zombie => zombie.element.remove());
+            zombies = [];
+
+            score = 0;
+            scoreDisplay.textContent = `Puntuación: ${score}`;
+            isGameOver = false;
+
+            // Ocultar pantalla de Game Over y pantalla de inicio
+            gameOverScreen.style.display = 'none';
+            startScreen.style.display = 'none';
+        }
+
+        /**
+         * Actualiza la posición visual del jugador.
+         */
+        function updatePlayerPosition() {
+            player.style.left = `${playerX}px`;
+            player.style.top = `${playerY}px`;
+        }
+
+        /**
+         * Crea un nuevo zombi en una posición aleatoria en los bordes del área de juego.
+         */
+        function createZombie() {
+            const zombieElement = document.createElement('img'); // Crear un elemento de imagen
+            zombieElement.classList.add('zombie');
+            zombieElement.src = zombieImageUrl; // Establecer la URL de la imagen del zombi
+            zombieElement.alt = "Zombi de Plants vs Zombies"; // Texto alternativo para accesibilidad
+            gameContainer.appendChild(zombieElement);
+
+            let spawnX, spawnY;
+            const edge = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+
+            switch (edge) {
+                case 0: // Top edge
+                    spawnX = Math.random() * (gameWidth - zombieElement.offsetWidth);
+                    spawnY = -zombieElement.offsetHeight;
+                    break;
+                case 1: // Right edge
+                    spawnX = gameWidth;
+                    spawnY = Math.random() * (gameHeight - zombieElement.offsetHeight);
+                    break;
+                case 2: // Bottom edge
+                    spawnX = Math.random() * (gameWidth - zombieElement.offsetWidth);
+                    spawnY = gameHeight;
+                    break;
+                case 3: // Left edge
+                    spawnX = -zombieElement.offsetWidth;
+                    spawnY = Math.random() * (gameHeight - zombieElement.offsetHeight);
+                    break;
+            }
+
+            const newZombie = {
+                element: zombieElement,
+                x: spawnX,
+                y: spawnY,
+                speed: zombieSpeed * (1 + score / 500) // Zombis se vuelven ligeramente más rápidos con el tiempo
+            };
+
+            zombies.push(newZombie);
+            updateZombiePosition(newZombie); // Actualizar su posición inicial
+        }
+
+        /**
+         * Actualiza la posición visual de un zombi.
+         * @param {object} zombie - El objeto zombi con sus propiedades x, y y element.
+         */
+        function updateZombiePosition(zombie) {
+            zombie.element.style.left = `${zombie.x}px`;
+            zombie.element.style.top = `${zombie.y}px`;
+        }
+
+        /**
+         * Mueve a los zombis hacia el jugador.
+         */
+        function moveZombies() {
+            zombies.forEach(zombie => {
+                // Calcular la dirección hacia el jugador
+                const deltaX = playerX - zombie.x;
+                const deltaY = playerY - zombie.y;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                if (distance > 1) { // Mover solo si no están encima
+                    zombie.x += (deltaX / distance) * zombie.speed;
+                    zombie.y += (deltaY / distance) * zombie.speed;
+                }
+                updateZombiePosition(zombie);
+            });
+        }
+
+        /**
+         * Comprueba colisiones entre el jugador y los zombis.
+         */
+        function checkCollisions() {
+            const playerRect = player.getBoundingClientRect(); // Obtiene las dimensiones y posición real del jugador
+
+            for (let i = 0; i < zombies.length; i++) {
+                const zombie = zombies[i];
+                const zombieRect = zombie.element.getBoundingClientRect(); // Obtiene las dimensiones del zombi
+
+                // Detecta colisión usando las coordenadas de los rectángulos
+                if (playerRect.left < zombieRect.right &&
+                    playerRect.right > zombieRect.left &&
+                    playerRect.top < zombieRect.bottom &&
+                    playerRect.bottom > zombieRect.top) {
+                    endGame(); // ¡Juego terminado si hay colisión!
+                    return;
+                }
+            }
+        }
+
+        /**
+         * Termina el juego, muestra la pantalla de Game Over y detiene los intervalos.
+         */
+        function endGame() {
+            isGameOver = true;
+            isGamePaused = true; // Pausar el juego
+            clearInterval(gameInterval);
+            clearInterval(zombieSpawnInterval);
+
+            finalScoreDisplay.textContent = score.toFixed(0); // Mostrar puntuación final
+            gameOverScreen.style.display = 'flex'; // Mostrar pantalla de Game Over
+        }
+
+        /**
+         * Inicia el bucle principal del juego.
+         */
+        function startGameLoop() {
+            // Actualiza la puntuación cada segundo
+            gameInterval = setInterval(() => {
+                if (!isGameOver && !isGamePaused) {
+                    score += 1;
+                    scoreDisplay.textContent = `Puntuación: ${score.toFixed(0)}`;
+                }
+            }, 1000); // 1000 ms = 1 segundo
+
+            // Genera nuevos zombis cada 2 segundos
+            zombieSpawnInterval = setInterval(() => {
+                if (!isGameOver && !isGamePaused) {
+                    createZombie();
+                }
+            }, 2000); // 2000 ms = 2 segundos
+        }
+
+        /**
+         * El bucle de animación principal del juego. Se llama constantemente.
+         */
+        function gameTick() {
+            if (isGameOver || isGamePaused) {
+                requestAnimationFrame(gameTick); // Seguir pidiendo frames incluso si está pausado/terminado
+                return;
+            }
+
+            // Mover al jugador
+            let moveX = 0;
+            let moveY = 0;
+
+            if (keysPressed['ArrowUp'] || keysPressed['KeyW'] || mobileButtonsPressed['up']) {
+                moveY -= playerSpeed;
+            }
+            if (keysPressed['ArrowDown'] || keysPressed['KeyS'] || mobileButtonsPressed['down']) {
+                moveY += playerSpeed;
+            }
+            if (keysPressed['ArrowLeft'] || keysPressed['KeyA'] || mobileButtonsPressed['left']) {
+                moveX -= playerSpeed;
+            }
+            if (keysPressed['ArrowRight'] || keysPressed['KeyD'] || mobileButtonsPressed['right']) {
+                moveX += playerSpeed;
+            }
+
+            // Actualizar las dimensiones del juego por si la ventana ha cambiado de tamaño
+            gameWidth = gameContainer.offsetWidth;
+            gameHeight = gameContainer.offsetHeight;
+
+            // Aplicar movimiento y asegurar que el jugador no salga de los límites
+            playerX = Math.max(0, Math.min(gameWidth - player.offsetWidth, playerX + moveX));
+            playerY = Math.max(0, Math.min(gameHeight - player.offsetHeight, playerY + moveY));
+            updatePlayerPosition();
+
+            // Mover zombis
+            moveZombies();
+
+            // Comprobar colisiones
+            checkCollisions();
+
+            // Solicitar el siguiente frame de animación
+            requestAnimationFrame(gameTick);
+        }
+
+        // --- Manejo de Eventos ---
+
+        // Eventos de teclado para movimiento del jugador
+        document.addEventListener('keydown', (e) => {
+            keysPressed[e.code] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keysPressed[e.code] = false;
+        });
+
+        // Eventos para botones táctiles
+        document.getElementById('mobile-up').addEventListener('touchstart', (e) => { e.preventDefault(); mobileButtonsPressed['up'] = true; });
+        document.getElementById('mobile-up').addEventListener('touchend', (e) => { e.preventDefault(); mobileButtonsPressed['up'] = false; });
+        document.getElementById('mobile-left').addEventListener('touchstart', (e) => { e.preventDefault(); mobileButtonsPressed['left'] = true; });
+        document.getElementById('mobile-left').addEventListener('touchend', (e) => { e.preventDefault(); mobileButtonsPressed['left'] = false; });
+        document.getElementById('mobile-right').addEventListener('touchstart', (e) => { e.preventDefault(); mobileButtonsPressed['right'] = true; });
+        document.getElementById('mobile-right').addEventListener('touchend', (e) => { e.preventDefault(); mobileButtonsPressed['right'] = false; });
+        document.getElementById('mobile-down').addEventListener('touchstart', (e) => { e.preventDefault(); mobileButtonsPressed['down'] = true; });
+        document.getElementById('mobile-down').addEventListener('touchend', (e) => { e.preventDefault(); mobileButtonsPressed['down'] = false; });
+
+        // Evento para el botón de reiniciar juego
+        restartButton.addEventListener('click', () => {
+            initializeGame();
+            isGamePaused = false; // Reanudar el juego
+            startGameLoop(); // Reiniciar los intervalos
+        });
+
+        // Evento para el botón de inicio
+        startButton.addEventListener('click', () => {
+            initializeGame();
+            isGamePaused = false; // Quitar pausa del juego
+            startGameLoop(); // Iniciar los intervalos del juego
+        });
+
+        // --- Inicio del juego ---
+        // Se llama una vez para configurar la posición inicial y comenzar el bucle de animación
+        // El juego comenzará en la pantalla de inicio, esperando que el usuario presione "¡Empezar!"
+        window.onload = function() {
+            initializeGame(); // Prepara el juego pero no lo inicia (isGamePaused = true)
+            startScreen.style.display = 'flex'; // Asegura que la pantalla de inicio esté visible
+            requestAnimationFrame(gameTick); // Inicia el bucle de animación para el movimiento del jugador
+        };
+
+        // Ajustar el tamaño del juego si la ventana cambia de tamaño
+        window.addEventListener('resize', () => {
+            gameWidth = gameContainer.offsetWidth;
+            gameHeight = gameContainer.offsetHeight;
+            updatePlayerPosition(); // Reajusta la posición del jugador si el contenedor cambia de tamaño
+            // Nota: Los zombis se reajustarán en el siguiente movimiento
+        });
+    </script>
+</body>
+</html>
